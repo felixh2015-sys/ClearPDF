@@ -163,7 +163,9 @@ android {
                 "META-INF/LICENSE",
                 "META-INF/LICENSE.md",
                 "META-INF/NOTICE",
-                "META-INF/NOTICE.md"
+                "META-INF/NOTICE.md",
+                // Post-quantum parameter tables from BouncyCastle (~7 MB); no PQC algorithm is used.
+                "org/bouncycastle/pqc/**"
             )
         }
     }

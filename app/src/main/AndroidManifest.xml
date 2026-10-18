@@ -4,6 +4,9 @@
 
     <!-- Camera permission for document scanning -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- com.kyant.shapes ships a manifest without targetSdkVersion, so the merger implies
+         READ_PHONE_STATE for it. The app never reads phone state. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
     <!-- The main manifest does not declare INTERNET. Bundled libraries may contribute it when
          manifests are merged. The Play build gets the optional Office engine through Play Feature
          Delivery. The FOSS flavor declares INTERNET for the on-request engine download and the
