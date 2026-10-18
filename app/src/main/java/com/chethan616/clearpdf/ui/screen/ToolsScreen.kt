@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.rounded.CallSplit
 import androidx.compose.material.icons.automirrored.rounded.NoteAdd
 import androidx.compose.material.icons.rounded.BrandingWatermark
 import androidx.compose.material.icons.rounded.Collections
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Compress
 import androidx.compose.material.icons.rounded.ContentCut
 import androidx.compose.material.icons.rounded.EditNote
@@ -137,6 +138,7 @@ fun ToolsScreen(
         ToolSection(
             stringResource(R.string.tools_section_convert),
             listOf(
+                ToolSpec("pdf_to_office", stringResource(R.string.tool_pdf_to_office), stringResource(R.string.tool_pdf_to_office_sub), ToolAccents.ConvertOffice, Icons.Rounded.Description, onNavigateToExtractText),
                 ToolSpec("images", stringResource(R.string.tool_images), stringResource(R.string.tool_images_sub), ToolAccents.ImagesToPdf, Icons.Rounded.Image, onNavigateToImagesToPdf),
                 ToolSpec("pdf_to_images", stringResource(R.string.tool_pdf_to_images), stringResource(R.string.tool_pdf_to_images_sub), ToolAccents.PdfToImages, Icons.Rounded.Collections, onNavigateToPdfToImages),
                 ToolSpec("extract", stringResource(R.string.tool_extract), stringResource(R.string.tool_extract_sub), ToolAccents.ExtractText, Icons.Rounded.TextSnippet, onNavigateToExtractText),

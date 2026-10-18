@@ -47,8 +47,18 @@ data class ExtractTextUiState(
     val canMakeSearchable: Boolean = false,
     val isSavingSearchable: Boolean = false,
     val searchableOutputUri: Uri? = null,
-    val searchableSavedLabel: String? = null
+    val searchableSavedLabel: String? = null,
+    /** Word / Excel conversion. */
+    val isExporting: Boolean = false,
+    val exportProgress: Pair<Int, Int>? = null,
+    val exportUsingOcr: Boolean = false,
+    val exportedUri: Uri? = null,
+    val exportedMime: String? = null,
+    val exportedName: String? = null,
+    val exportedSavedLabel: String? = null
 )
+
+enum class ExportFormat { WORD, EXCEL }
 
 class ExtractTextViewModel(
     private val converter: PdfConverter,
@@ -79,7 +89,9 @@ class ExtractTextViewModel(
                     isExtracting = false,
                     text = extracted,
                     hasResult = true,
-                    canRecognize = empty,
+                    // OCR stays available even when there is digital text: some PDFs carry a
+                    // broken or partial text layer, and a fresh OCR pass fixes them.
+                    canRecognize = true,
                     errorMessage = if (empty) context.getString(R.string.extract_no_selectable_text) else null
                 )
             } catch (e: Exception) {
@@ -150,7 +162,7 @@ class ExtractTextViewModel(
                 val ts = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                 val fileName = "ClearPDF_Searchable_$ts.pdf"
                 val saveLabel = SaveLocationManager.getSavePathDisplay(context)
-                val outUri = createOutputUri(context, fileName)
+                val outUri = createOutputUri(context, fileName, "application/pdf")
                 withContext(Dispatchers.IO) {
                     PdfSearchableStamper.stamp(context, uri, outUri, invisibleWordsByPage)
                 }
@@ -172,6 +184,67 @@ class ExtractTextViewModel(
         }
     }
 
+    /**
+     * Converts the selected PDF to an editable Word or Excel file. Pages with real text are
+     * read directly; scanned pages go through OCR in Spanish, so mixed PDFs work too.
+     */
+    fun exportAs(context: Context, format: ExportFormat, forceOcr: Boolean = false) {
+        val uri = _uiState.value.sourceUri ?: return
+        if (_uiState.value.isExporting) return
+        _uiState.value = _uiState.value.copy(
+            isExporting = true, exportProgress = null, exportUsingOcr = false,
+            exportedUri = null, errorMessage = null
+        )
+        viewModelScope.launch {
+            try {
+                val pages = com.chethan616.clearpdf.export.PdfPageReader.read(context, uri, ocrService, forceOcr) { page, total, usingOcr ->
+                    _uiState.value = _uiState.value.copy(exportProgress = page to total, exportUsingOcr = usingOcr)
+                }
+                if (pages.all { it.isEmpty }) {
+                    _uiState.value = _uiState.value.copy(
+                        isExporting = false, exportProgress = null,
+                        errorMessage = context.getString(R.string.export_no_text)
+                    )
+                    return@launch
+                }
+                val base = _uiState.value.sourceFileName.substringBeforeLast('.').ifBlank { "Documento" }
+                    .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                val (ext, mime) = when (format) {
+                    ExportFormat.WORD -> "docx" to com.chethan616.clearpdf.util.ShareToCloud.MIME_DOCX
+                    ExportFormat.EXCEL -> "xlsx" to com.chethan616.clearpdf.util.ShareToCloud.MIME_XLSX
+                }
+                val fileName = "$base.$ext"
+                val outUri = createOutputUri(context, fileName, mime)
+                withContext(Dispatchers.IO) {
+                    val out = context.contentResolver.openOutputStream(outUri, "wt")
+                        ?: throw IllegalStateException("Unable to write $fileName")
+                    out.use {
+                        when (format) {
+                            ExportFormat.WORD -> com.chethan616.clearpdf.export.DocxExporter.write(pages, base, it)
+                            ExportFormat.EXCEL -> com.chethan616.clearpdf.export.XlsxExporter.write(
+                                pages, true, context.getString(R.string.export_sheet_prefix), it
+                            )
+                        }
+                    }
+                }
+                _uiState.value = _uiState.value.copy(
+                    isExporting = false,
+                    exportProgress = null,
+                    exportedUri = outUri,
+                    exportedMime = mime,
+                    exportedName = fileName,
+                    exportedSavedLabel = SaveLocationManager.getSavePathDisplay(context)
+                )
+            } catch (t: Throwable) {
+                _uiState.value = _uiState.value.copy(
+                    isExporting = false,
+                    exportProgress = null,
+                    errorMessage = context.getString(R.string.export_failed)
+                )
+            }
+        }
+    }
+
     fun reset() {
         lastOcrWordsByPage = emptyMap()
         _uiState.value = ExtractTextUiState()
@@ -186,22 +259,22 @@ class ExtractTextViewModel(
         }
     } catch (_: Exception) { null }
 
-    private fun createOutputUri(context: Context, fileName: String): Uri {
+    private fun createOutputUri(context: Context, fileName: String, mime: String): Uri {
         val customUri = SaveLocationManager.getSaveUri(context)
         if (customUri != null) {
             return try {
                 val docUri = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, customUri)
-                docUri?.createFile("application/pdf", fileName)?.uri ?: createDownloadUri(context, fileName)
-            } catch (_: Exception) { createDownloadUri(context, fileName) }
+                docUri?.createFile(mime, fileName)?.uri ?: createDownloadUri(context, fileName, mime)
+            } catch (_: Exception) { createDownloadUri(context, fileName, mime) }
         }
-        return createDownloadUri(context, fileName)
+        return createDownloadUri(context, fileName, mime)
     }
 
-    private fun createDownloadUri(context: Context, fileName: String): Uri {
+    private fun createDownloadUri(context: Context, fileName: String, mime: String): Uri {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val cv = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+                put(MediaStore.MediaColumns.MIME_TYPE, mime)
                 put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
             }
             context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv)

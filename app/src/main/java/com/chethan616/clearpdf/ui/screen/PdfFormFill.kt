@@ -95,7 +95,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** The tint form boxes wear: the system's "fillable" blue. */
-internal val FormTint = Color(0xFF0A84FF)
+internal val FormTint = Color(0xFF0F6E80)
 
 /** A widget's box in this page's content px. */
 internal fun PdfFormWidget.rectIn(size: Size): Rect =

@@ -50,6 +50,8 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CameraAlt
+import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CropFree
@@ -121,6 +123,7 @@ fun ScanDocumentScreen(
     val context = LocalContext.current
     val activity = context as Activity
     val scope = rememberCoroutineScope()
+    var ocrProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
@@ -495,7 +498,14 @@ fun ScanDocumentScreen(
                     scope.launch {
                         viewModel.startScanning() // reuse as "saving" indicator
                         val filter = state.scannedPages.firstOrNull()?.filter ?: ScanFilter.ORIGINAL
-                        val pdfUri = savePagesAsPdf(context, state.scannedPages.map { it.uri }, filter)
+                        val pdfUri = savePagesAsPdf(
+                            context,
+                            state.scannedPages.map { it.uri },
+                            filter,
+                            runOcr = true,
+                            onProgress = { done, total -> ocrProgress = done to total }
+                        )
+                        ocrProgress = null
                         viewModel.cancelScanning()
                         if (pdfUri != null) {
                             viewModel.markAsSaved(pdfUri)
@@ -521,9 +531,44 @@ fun ScanDocumentScreen(
                 ) {
                     Icon(Icons.Rounded.PictureAsPdf, null, Modifier.size(22.dp), Color.White)
                     BasicText(
-                        if (state.isScanning) stringResource(R.string.saving) else stringResource(R.string.save_as_pdf),
+                        when {
+                            ocrProgress != null -> stringResource(R.string.scan_ocr_progress, ocrProgress!!.first + 1, ocrProgress!!.second)
+                            state.isScanning -> stringResource(R.string.saving)
+                            else -> stringResource(R.string.save_as_pdf)
+                        },
                         style = TextStyle(Color.White, 16.sp, FontWeight.Bold)
                     )
+                }
+            }
+
+            // After saving: upload straight to Google Drive or share.
+            state.savedPdfUri?.let { saved ->
+                BasicText(
+                    stringResource(R.string.scan_saved_with_ocr),
+                    style = TextStyle(sub, 12.sp, textAlign = TextAlign.Center),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    LiquidButton(
+                        onClick = { com.chethan616.clearpdf.util.ShareToCloud.uploadToDrive(context, saved, com.chethan616.clearpdf.util.ShareToCloud.MIME_PDF) },
+                        backdrop = backdrop,
+                        tint = accent,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Rounded.CloudUpload, null, Modifier.size(18.dp), Color.White)
+                        BasicText(stringResource(R.string.upload_to_drive), style = TextStyle(Color.White, 14.sp, FontWeight.Medium))
+                    }
+                    LiquidButton(
+                        onClick = { com.chethan616.clearpdf.util.ShareToCloud.share(context, saved, com.chethan616.clearpdf.util.ShareToCloud.MIME_PDF) },
+                        backdrop = backdrop,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Rounded.Share, null, Modifier.size(18.dp), text)
+                        BasicText(stringResource(R.string.share), style = TextStyle(text, 14.sp, FontWeight.Medium))
+                    }
                 }
             }
         }
@@ -533,48 +578,91 @@ fun ScanDocumentScreen(
 }
 
 /**
- * Convert scanned page images to a PDF file with filter applied
+ * Converts scanned page images to a PDF with the filter applied, then runs on-device OCR
+ * (Spanish + English) on every page and bakes the result in as an invisible text layer.
+ * The saved PDF looks exactly like the scan but its text can be searched, copied and read
+ * by AI assistants. If OCR fails, the plain image PDF is still saved.
  */
-private suspend fun savePagesAsPdf(context: Context, uris: List<Uri>, filter: ScanFilter): Uri? {
+private suspend fun savePagesAsPdf(
+    context: Context,
+    uris: List<Uri>,
+    filter: ScanFilter,
+    runOcr: Boolean = true,
+    onProgress: (done: Int, total: Int) -> Unit = { _, _ -> }
+): Uri? {
     return withContext(Dispatchers.IO) {
+        var imagePdf: File? = null
         try {
             val pdfDocument = PdfDocument()
+            val wordsByPage = mutableMapOf<Int, List<com.kyant.pdfcore.searchable.InvisibleWord>>()
+            var pageIndex = 0
 
-            uris.forEachIndexed { index, uri ->
-                val inputStream = context.contentResolver.openInputStream(uri) ?: return@forEachIndexed
+            uris.forEach { uri ->
+                val inputStream = context.contentResolver.openInputStream(uri) ?: return@forEach
                 val originalBitmap = BitmapFactory.decodeStream(inputStream)
                 inputStream.close()
 
                 if (originalBitmap != null) {
                     val bitmap = applyBitmapFilter(originalBitmap, filter)
                     val pageInfo = PdfDocument.PageInfo.Builder(
-                        bitmap.width, bitmap.height, index + 1
+                        bitmap.width, bitmap.height, pageIndex + 1
                     ).create()
                     val page = pdfDocument.startPage(pageInfo)
                     page.canvas.drawBitmap(bitmap, 0f, 0f, null)
                     pdfDocument.finishPage(page)
+
+                    if (runOcr) {
+                        withContext(Dispatchers.Main) { onProgress(pageIndex, uris.size) }
+                        val words = runCatching {
+                            com.chethan616.clearpdf.data.repository.PdfServiceLocator.ocrService
+                                .recognize(context, bitmap).words
+                        }.getOrNull().orEmpty()
+                        if (words.isNotEmpty()) {
+                            wordsByPage[pageIndex] = words.map {
+                                com.kyant.pdfcore.searchable.InvisibleWord(it.text, it.left, it.top, it.right, it.bottom)
+                            }
+                        }
+                    }
+
                     if (bitmap !== originalBitmap) bitmap.recycle()
                     originalBitmap.recycle()
+                    pageIndex++
                 }
             }
+            if (pageIndex == 0) {
+                pdfDocument.close()
+                return@withContext null
+            }
 
-            // Save to Downloads
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val fileName = "ClearPDF_Scan_$timeStamp.pdf"
+            val fileName = "Escaneo_$timeStamp.pdf"
 
-            val pdfUri = createScanOutputUri(context, fileName)
-            val outputStream = context.contentResolver.openOutputStream(pdfUri)
-                ?: throw IllegalStateException("Unable to open scan output stream")
-            outputStream.use {
+            // The image-only PDF goes to the cache first; the text layer is stamped onto a copy.
+            val tmp = File(context.cacheDir, "scan_$timeStamp.pdf")
+            imagePdf = tmp
+            tmp.outputStream().use {
                 pdfDocument.writeTo(it)
                 it.flush()
             }
-
             pdfDocument.close()
+
+            val pdfUri = createScanOutputUri(context, fileName)
+            val stamped = wordsByPage.isNotEmpty() && runCatching {
+                com.kyant.pdfcore.searchable.PdfSearchableStamper.stamp(
+                    context, Uri.fromFile(tmp), pdfUri, wordsByPage
+                )
+            }.isSuccess
+            if (!stamped) {
+                val outputStream = context.contentResolver.openOutputStream(pdfUri, "wt")
+                    ?: throw IllegalStateException("Unable to open scan output stream")
+                outputStream.use { out -> tmp.inputStream().use { it.copyTo(out) } }
+            }
             pdfUri
         } catch (e: Exception) {
             e.printStackTrace()
             null
+        } finally {
+            imagePdf?.delete()
         }
     }
 }

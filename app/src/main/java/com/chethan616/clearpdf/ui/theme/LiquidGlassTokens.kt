@@ -7,14 +7,28 @@ import androidx.compose.ui.graphics.Color
  * place makes the visual hierarchy consistent across every screen and avoids
  * scattering near-duplicate colors through composables.
  */
+/**
+ * Tinta PDF brand palette: a deep ink teal for primary actions and a warm amber accent.
+ * Every value carries a white label on LiquidButton's tinted capsule.
+ */
+object BrandColors {
+    val Primary = Color(0xFF0F6E80)   // tinta (ink teal)
+    val PrimaryDark = Color(0xFF0B4F5C)
+    val Accent = Color(0xFFC77700)    // ámbar
+    val Word = Color(0xFF2B579A)
+    val Excel = Color(0xFF1D7044)
+    val Success = Color(0xFF1B7F37)
+}
+
 object LiquidGlassColors {
     val LightText = Color(0xFF111216)
     val LightSecondary = Color(0xFF5E6068)
     val DarkText = Color(0xFFF7F7FA)
     val DarkSecondary = Color(0xFFB5B6BF)
 
-    // Apple-style system accents, tuned for translucent surfaces.
-    val Blue = Color(0xFF0A84FF)
+    // System accents, tuned for translucent surfaces. "Blue" is the app's primary action
+    // colour, so it carries the Tinta PDF ink teal.
+    val Blue = BrandColors.Primary
     val Green = Color(0xFF30D158)
     val Red = Color(0xFFFF453A)
     val Purple = Color(0xFFBF5AF2)
@@ -49,7 +63,7 @@ object LiquidGlassColors {
  * hues appear here as their deeper, still-saturated shades.
  */
 object ToolAccents {
-    val Open = Color(0xFF0A84FF)
+    val Open = BrandColors.Primary
     val Scan = Color(0xFF1E9E4A)
 
     // Organize
@@ -61,7 +75,8 @@ object ToolAccents {
     // Convert
     val ImagesToPdf = Color(0xFF5E5CE6)
     val PdfToImages = Color(0xFF1597D3)
-    val ExtractText = Color(0xFF00838F)
+    val ExtractText = BrandColors.Primary
+    val ConvertOffice = BrandColors.Word
     val Create = Color(0xFFEE6A00)
     val HtmlToPdf = Color(0xFFEE6A00)
 
@@ -78,7 +93,7 @@ object ToolAccents {
     val Decrypt = Color(0xFFAF52DE)
 
     // App chrome
-    val Settings = Color(0xFF0A84FF)
-    val Star = Color(0xFFD97706)
+    val Settings = BrandColors.Primary
+    val Star = BrandColors.Accent
     val Destructive = Color(0xFFFF3B30)
 }

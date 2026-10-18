@@ -107,7 +107,7 @@ internal fun PageScrubber(
         )
     }
     val view = LocalView.current
-    val accent = Color(0xFF0A84FF)
+    val accent = Color(0xFF0F6E80)
     // Idle thumb: soft light blue — visible on both themes, not harsh like pure white.
     val idleThumb = Color(0xFF8FBFFF)
 

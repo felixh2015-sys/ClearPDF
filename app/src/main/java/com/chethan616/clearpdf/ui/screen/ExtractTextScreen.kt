@@ -23,7 +23,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
+import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.CircularProgressIndicator
@@ -50,6 +54,11 @@ import com.chethan616.clearpdf.ui.theme.LocalIsDarkMode
 import com.chethan616.clearpdf.ui.theme.LiquidGlassColors
 import com.chethan616.clearpdf.ui.utils.rememberUISensor
 import com.chethan616.clearpdf.ui.viewmodel.ExtractTextViewModel
+import com.chethan616.clearpdf.ui.viewmodel.ExportFormat
+import com.chethan616.clearpdf.ui.theme.BrandColors
+import com.chethan616.clearpdf.util.ShareToCloud
+import android.net.Uri
+import android.widget.Toast
 import com.kyant.backdrop.backdrops.LayerBackdrop
 
 import androidx.compose.runtime.mutableStateOf
@@ -71,7 +80,7 @@ fun ExtractTextScreen(
     val isDark = LocalIsDarkMode.current
     val text = if (isDark) Color(0xFFF0F0F0) else Color(0xFF222222)
     val sub = if (isDark) Color(0xFFAAAAAA) else Color(0xFF777777)
-    val accent = Color(0xFF00838F)
+    val accent = BrandColors.Primary
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { viewModel.onSelectFile(context, it) }
@@ -164,6 +173,54 @@ fun ExtractTextScreen(
             }
             state.errorMessage?.let { BasicText(it, style = TextStyle(Color(0xFFFFB300), 12.sp)) }
 
+            // ── Convert to editable Word / Excel ──
+            if (state.hasResult && state.sourceUri != null) {
+                BasicText(stringResource(R.string.export_convert_to), style = TextStyle(sub, 12.sp, FontWeight.Medium))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LiquidButton(
+                        onClick = { viewModel.exportAs(context, ExportFormat.WORD) },
+                        backdrop = backdrop,
+                        tint = BrandColors.Word,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Rounded.Description, null, Modifier.size(18.dp), Color.White)
+                        BasicText(stringResource(R.string.export_word), style = TextStyle(Color.White, 14.sp, FontWeight.Medium))
+                    }
+                    LiquidButton(
+                        onClick = { viewModel.exportAs(context, ExportFormat.EXCEL) },
+                        backdrop = backdrop,
+                        tint = BrandColors.Excel,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Rounded.TableChart, null, Modifier.size(18.dp), Color.White)
+                        BasicText(stringResource(R.string.export_excel), style = TextStyle(Color.White, 14.sp, FontWeight.Medium))
+                    }
+                }
+                if (state.isExporting) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(color = accent, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
+                        val p = state.exportProgress
+                        BasicText(
+                            when {
+                                p == null -> stringResource(R.string.export_preparing)
+                                state.exportUsingOcr -> stringResource(R.string.export_progress_ocr, p.first + 1, p.second)
+                                else -> stringResource(R.string.export_progress, p.first + 1, p.second)
+                            },
+                            style = TextStyle(sub, 12.sp)
+                        )
+                    }
+                }
+                val exported = state.exportedUri
+                val exportedMime = state.exportedMime
+                if (exported != null && exportedMime != null && !state.isExporting) {
+                    BasicText(
+                        stringResource(R.string.export_saved, state.exportedName.orEmpty(), state.exportedSavedLabel.orEmpty()),
+                        style = TextStyle(BrandColors.Success, 12.sp)
+                    )
+                    FileActionsRow(backdrop, exported, exportedMime, state.exportedName, text)
+                }
+            }
+
             if (state.canRecognize && !state.isRecognizing) {
                 LiquidButton(
                     onClick = { viewModel.recognizeText(context) },
@@ -178,7 +235,7 @@ fun ExtractTextScreen(
                 LiquidButton(
                     onClick = { viewModel.makeSearchablePdf(context) },
                     backdrop = backdrop,
-                    tint = Color(0xFF2E7D32),
+                    tint = BrandColors.Success,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (state.isSavingSearchable) {
@@ -188,11 +245,12 @@ fun ExtractTextScreen(
                     }
                 }
             }
-            if (state.searchableOutputUri != null) {
+            state.searchableOutputUri?.let { searchable ->
                 BasicText(
                     stringResource(R.string.extract_searchable_saved, state.searchableSavedLabel.orEmpty()),
-                    style = TextStyle(Color(0xFF2E7D32), 12.sp)
+                    style = TextStyle(BrandColors.Success, 12.sp)
                 )
+                FileActionsRow(backdrop, searchable, ShareToCloud.MIME_PDF, null, text)
             }
 
             Box(Modifier.fillMaxWidth().weight(1f).liquidGlassPanel(backdrop, uiSensor).padding(14.dp)) {
@@ -223,6 +281,49 @@ fun ExtractTextScreen(
                 }
             }
             Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/** Open / upload to Google Drive / share, for a file the screen just produced. */
+@Composable
+private fun FileActionsRow(backdrop: LayerBackdrop, uri: Uri, mime: String, name: String?, textColor: Color) {
+    val context = LocalContext.current
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LiquidButton(
+            onClick = {
+                val view = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, mime)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                try {
+                    context.startActivity(view)
+                } catch (_: android.content.ActivityNotFoundException) {
+                    Toast.makeText(context, context.getString(R.string.no_app_to_open), Toast.LENGTH_LONG).show()
+                }
+            },
+            backdrop = backdrop,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(Icons.Rounded.OpenInNew, null, Modifier.size(16.dp), textColor)
+            BasicText(stringResource(R.string.open), style = TextStyle(textColor, 13.sp, FontWeight.Medium))
+        }
+        LiquidButton(
+            onClick = { ShareToCloud.uploadToDrive(context, uri, mime, name) },
+            backdrop = backdrop,
+            tint = BrandColors.Primary,
+            modifier = Modifier.weight(1.3f)
+        ) {
+            Icon(Icons.Rounded.CloudUpload, null, Modifier.size(16.dp), Color.White)
+            BasicText(stringResource(R.string.upload_to_drive_short), style = TextStyle(Color.White, 13.sp, FontWeight.Medium))
+        }
+        LiquidIconButton(
+            onClick = { ShareToCloud.share(context, uri, mime, name) },
+            backdrop = backdrop,
+            tint = BrandColors.Accent,
+            modifier = Modifier.size(44.dp)
+        ) {
+            Icon(Icons.Rounded.Share, stringResource(R.string.share), Modifier.size(20.dp), Color.White)
         }
     }
 }

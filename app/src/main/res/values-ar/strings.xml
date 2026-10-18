@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">ClearPDF</string>
+    <string name="app_name">Tinta PDF</string>
     <string name="shortcut_open_short">فتح PDF</string>
     <string name="shortcut_open_long">فتح ملف PDF</string>
     <string name="shortcut_merge_short">دمج ملفات PDF</string>

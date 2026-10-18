@@ -409,6 +409,9 @@ fun DocsNavGraph(
                 onNavigateToScan = {
                     navController.navigate(ROUTE_SCAN) { launchSingleTop = true }
                 },
+                onNavigateToConvert = {
+                    navController.navigate(ROUTE_EXTRACT_TEXT) { launchSingleTop = true }
+                },
                 onRecentFileSelected = { uri, name ->
                     // Route by document kind: spreadsheets open in the interactive grid viewer,
                     // everything else in the PDF viewer. The name comes from the recents entry

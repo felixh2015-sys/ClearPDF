@@ -66,3 +66,6 @@ scratch/
 
 # Upstream reference clones (study only)
 /reference/
+
+# Tinta PDF: clave fija para que cada compilación se instale como actualización
+!keystore/tinta-debug.jks

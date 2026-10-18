@@ -290,7 +290,8 @@ fun DocsApp(shortcutRoute: String? = null, incomingPdfUri: android.net.Uri? = nu
         val contentBackdrop = rememberLayerBackdrop()
         // With the wallpaper off, `backdrop` records nothing but one solid colour (the Box below), so
         // every glass surface sampling it can draw that colour directly instead of blurring it.
-        val flatWallpaperColor = if (!isDarkMode) Color(0xFFE9E9EE) else Color(0xFF1C1C1E)
+        // Tinta PDF: a faint ink-tinted grey instead of a neutral one.
+        val flatWallpaperColor = if (!isDarkMode) Color(0xFFE8EFF1) else Color(0xFF162024)
         val flatBackdrop = remember(showWallpaper, flatWallpaperColor, backdrop) {
             if (showWallpaper) null else com.chethan616.clearpdf.ui.components.FlatBackdrop(backdrop, flatWallpaperColor)
         }

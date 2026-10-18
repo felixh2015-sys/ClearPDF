@@ -76,6 +76,7 @@ import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.PictureAsPdf
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Scanner
+import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material.icons.rounded.Slideshow
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -155,6 +156,7 @@ fun HomeScreen(
     backdrop: LayerBackdrop,
     onNavigateToOpenPdf: () -> Unit,
     onNavigateToScan: () -> Unit,
+    onNavigateToConvert: () -> Unit = {},
     // The stored display name travels with the uri. Re-querying DISPLAY_NAME at tap time is a
     // guess that fails exactly when it matters: a lapsed permission or a provider that answers with
     // its own internal name sends a .docx down the plain-PDF route. Recents already knows what the
@@ -286,7 +288,8 @@ fun HomeScreen(
                     uiSensor = uiSensor,
                     entrance = entrance,
                     onOpen = onNavigateToOpenPdf,
-                    onScan = onNavigateToScan
+                    onScan = onNavigateToScan,
+                    onConvert = onNavigateToConvert
                 )
             } else {
                 LazyColumn(
@@ -311,6 +314,7 @@ fun HomeScreen(
                                 uiSensor = uiSensor,
                                 onOpen = onNavigateToOpenPdf,
                                 onScan = onNavigateToScan,
+                                onConvert = onNavigateToConvert,
                                 modifier = entrance.glassFade(1)
                             )
                         }
@@ -694,6 +698,7 @@ private fun HomeHeroCard(
     uiSensor: com.chethan616.clearpdf.ui.utils.UISensor,
     onOpen: () -> Unit,
     onScan: () -> Unit,
+    onConvert: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isDark = LocalIsDarkMode.current
@@ -742,6 +747,15 @@ private fun HomeHeroCard(
                 modifier = Modifier.weight(1f)
             )
         }
+        Spacer(Modifier.height(10.dp))
+        ToolPrimaryButton(
+            text = stringResource(R.string.home_convert),
+            onClick = onConvert,
+            backdrop = backdrop,
+            accent = ToolAccents.ConvertOffice,
+            icon = Icons.Rounded.TableChart,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -779,7 +793,8 @@ private fun HomeLaunchpad(
     uiSensor: com.chethan616.clearpdf.ui.utils.UISensor,
     entrance: Transition<Boolean>,
     onOpen: () -> Unit,
-    onScan: () -> Unit
+    onScan: () -> Unit,
+    onConvert: () -> Unit
 ) {
     val isDark = LocalIsDarkMode.current
     val text = LiquidGlassColors.text(isDark)
@@ -852,6 +867,15 @@ private fun HomeLaunchpad(
                     backdrop = backdrop,
                     accent = ToolAccents.Scan,
                     icon = Icons.Rounded.DocumentScanner,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                ToolPrimaryButton(
+                    text = stringResource(R.string.home_convert),
+                    onClick = onConvert,
+                    backdrop = backdrop,
+                    accent = ToolAccents.ConvertOffice,
+                    icon = Icons.Rounded.TableChart,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(26.dp))

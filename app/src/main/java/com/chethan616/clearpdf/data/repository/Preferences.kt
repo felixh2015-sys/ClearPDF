@@ -197,7 +197,7 @@ object AppSettingsManager {
     fun setBookMode(context: Context, enabled: Boolean) = prefs(context).edit().putBoolean("book_mode", enabled).apply()
 
     fun getReduceGlassMotion(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_REDUCE_GLASS_MOTION, false)
+        prefs(context).getBoolean(KEY_REDUCE_GLASS_MOTION, true) // calmer UI by default
 
     fun setReduceGlassMotion(context: Context, value: Boolean) =
         prefs(context).edit().putBoolean(KEY_REDUCE_GLASS_MOTION, value).apply()

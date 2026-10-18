@@ -41,12 +41,12 @@ android {
     buildToolsVersion = "36.1.0"
 
     defaultConfig {
-        applicationId = "com.chethan616.clearpdf"
+        applicationId = "com.tintapdf.app"
         minSdk = 23
         targetSdk = 36
         // Keep this a literal: F-Droid's update checker reads it from this file.
         versionCode = 6
-        versionName = "2.1.1"
+        versionName = "2.1.1-tinta1"
         // Keep every locale declared by the app. Filtering this to English
         // removes values-pt-rBR from the packaged APK, so the language picker
         // can appear to work while the app continues to resolve English.
@@ -54,7 +54,16 @@ android {
 
     signingConfigs {
         getByName("debug") {
-            // Default debug keystore
+            // Tinta PDF: a fixed keystore committed to the fork, so every CI build carries the
+            // same signature and installs as an update over the previous one. Personal builds
+            // only — use a private key (CLEARPDF_UPLOAD_* secrets) for anything published.
+            val fixed = rootProject.file("keystore/tinta-debug.jks")
+            if (fixed.exists()) {
+                storeFile = fixed
+                storePassword = "tintapdf"
+                keyAlias = "tinta"
+                keyPassword = "tintapdf"
+            }
         }
         create("release") {
             if (hasReleaseSigning) {

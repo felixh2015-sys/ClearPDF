@@ -420,7 +420,7 @@ internal fun PdfContinuousPage(
                             )
                         }
                         if (activeTool == PdfEditTool.Image && markup.id == activeImageId) {
-                            val accent = Color(0xFF0A84FF)
+                            val accent = Color(0xFF0F6E80)
                             // Rounded selection frame.
                             drawRoundRect(accent, r.topLeft, r.size, CornerRadius(10f, 10f), style = Stroke(2.5f))
                             // Passive corner dots (visual anchors).
@@ -466,15 +466,15 @@ internal fun PdfContinuousPage(
                     draftLasso.drop(1).forEach { lineTo(it.x, it.y) }
                     close()
                 }
-                drawPath(lassoPath, Color(0xFF0A84FF).copy(alpha = 0.18f))
-                drawPath(lassoPath, Color(0xFF0A84FF), style = Stroke(width = 3f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(lassoPath, Color(0xFF0F6E80).copy(alpha = 0.18f))
+                drawPath(lassoPath, Color(0xFF0F6E80), style = Stroke(width = 3f, cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
 
             if (activeTool == PdfEditTool.None && selectedMarkupIndices.size > 1) {
                 val groupBounds = selectedMarkupIndices.mapNotNull { marks.getOrNull(it)?.movableBounds() }
                     .reduceOrNull { a, b -> Rect(min(a.left, b.left), min(a.top, b.top), max(a.right, b.right), max(a.bottom, b.bottom)) }
                 groupBounds?.let { b ->
-                    drawRoundRect(Color(0xFF0A84FF), Offset(b.left - 8f, b.top - 8f),
+                    drawRoundRect(Color(0xFF0F6E80), Offset(b.left - 8f, b.top - 8f),
                         Size(b.width + 16f, b.height + 16f), CornerRadius(12f, 12f), style = Stroke(3f))
                 }
             }
@@ -483,7 +483,7 @@ internal fun PdfContinuousPage(
             if (activeTool == PdfEditTool.None) {
                 marks.getOrNull(selectedMarkupIndex)?.takeIf { it.isTransformable() }?.let { selM ->
                     selM.movableBounds()?.let { b ->
-                        val accent = Color(0xFF0A84FF)
+                        val accent = Color(0xFF0F6E80)
                         val fr = Rect(b.left - 6f, b.top - 6f, b.right + 6f, b.bottom + 6f)
                         drawRoundRect(accent, fr.topLeft, fr.size, CornerRadius(10f, 10f), style = Stroke(2.5f))
                         // Passive anchor dots.
@@ -508,7 +508,7 @@ internal fun PdfContinuousPage(
                     ?.takeIf { it is PdfMarkup.TextBlockHighlightMarkup || it is PdfMarkup.TextBlockLineMarkup }
                     ?.textMarkupRangeRect(ocrBlocks, frame)
                     ?.let { r ->
-                        val focus = Color(0xFF0A84FF).copy(0.9f)
+                        val focus = Color(0xFF0F6E80).copy(0.9f)
                         val bounds = if (marks[selectedMarkupIndex] is PdfMarkup.TextBlockLineMarkup) {
                             val y = marks[selectedMarkupIndex].textMarkupLineY(r) ?: r.bottom
                             Rect(r.left - 5f, y - 5f, r.right + 5f, y + 5f)

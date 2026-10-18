@@ -621,7 +621,7 @@ internal fun PdfViewerBottomToolbar(
                 LiquidButton(
                     onClick = { onSetActiveTool(if (lassoOn) PdfEditTool.None else PdfEditTool.Lasso) },
                     backdrop = backdrop,
-                    tint = Color(0xFF0A84FF), surfaceColor = toolDim(lassoOn)
+                    tint = Color(0xFF0F6E80), surfaceColor = toolDim(lassoOn)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Rounded.Gesture, null, Modifier.size(14.dp), Color.White)

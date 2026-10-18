@@ -567,7 +567,7 @@ fun DemoAnnotate(isActive: Boolean, ink: Color) {
                 measure.getSegment(0f, measure.length * sig, drawn, true)
                 drawPath(
                     drawn,
-                    Color(0xFF0A84FF),
+                    Color(0xFF0F6E80),
                     style = Stroke(width = 2.4f.dp.toPx(), cap = StrokeCap.Round)
                 )
             }

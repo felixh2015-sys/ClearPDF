@@ -110,7 +110,7 @@ fun ShareMorphButton(
     val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
     val thresholdPx = with(density) { 48.dp.toPx() }
-    val blue = Color(0xFF0A84FF)
+    val blue = Color(0xFF0F6E80)
 
     val morph = updateTransition(shareMode, label = "shareMorph")
     // Underdamped: the capsule springs past 104dp and settles back, so the morph has real weight.

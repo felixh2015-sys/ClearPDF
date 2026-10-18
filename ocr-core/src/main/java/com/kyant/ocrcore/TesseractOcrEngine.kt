@@ -12,19 +12,25 @@ import kotlinx.coroutines.withContext
  * Fully open-source (Apache-2.0) offline OCR fallback used only when the bundled
  * ML Kit engine fails to initialize or recognize (e.g. an OEM image stripped of the
  * TFLite runtime, or a non-Latin script ML Kit's default model doesn't cover).
- * Bundles `eng.traineddata` as a module asset so the fallback never needs a download.
+ * Bundles `spa.traineddata` and `eng.traineddata` as module assets so the fallback never
+ * needs a download. Spanish comes first so accents (á, é, ñ, ¿, ¡) are recognized correctly.
  */
 internal object TesseractOcrEngine {
-    private const val LANG = "eng"
+    private val LANG_FILES = listOf("spa", "eng")
+    private val LANG = LANG_FILES.joinToString("+")
 
-    /** Copies the bundled trained-data asset into app-private storage on first use.
+    /** Copies the bundled trained-data assets into app-private storage on first use.
      *  Returns the data-path directory to pass to [TessBaseAPI.init] (the parent of "tessdata/"). */
     private fun ensureTrainedData(context: Context): File {
         val tessdataDir = File(context.filesDir, "tesseract/tessdata").apply { mkdirs() }
-        val dest = File(tessdataDir, "$LANG.traineddata")
-        if (!dest.exists() || dest.length() == 0L) {
-            context.assets.open("tessdata/$LANG.traineddata").use { input ->
-                dest.outputStream().use { output -> input.copyTo(output) }
+        for (lang in LANG_FILES) {
+            val dest = File(tessdataDir, "$lang.traineddata")
+            if (!dest.exists() || dest.length() == 0L) {
+                val tmp = File(tessdataDir, "$lang.traineddata.part")
+                context.assets.open("tessdata/$lang.traineddata").use { input ->
+                    tmp.outputStream().use { output -> input.copyTo(output) }
+                }
+                tmp.renameTo(dest)
             }
         }
         return tessdataDir.parentFile!!

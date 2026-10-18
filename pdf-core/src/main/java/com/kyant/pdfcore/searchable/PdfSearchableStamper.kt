@@ -68,7 +68,9 @@ object PdfSearchableStamper {
                                 cs.setRenderingMode(RenderingMode.NEITHER)
                                 cs.setFont(font, fontSize)
                                 cs.setTextMatrix(Matrix(scaleX, 0f, 0f, 1f, x, y))
-                                cs.showText(sanitized)
+                                // The trailing space keeps words apart when AI tools and other
+                                // readers extract the text; it sits just past the word's box.
+                                cs.showText("$sanitized ")
                                 cs.endText()
                             }
                         }
