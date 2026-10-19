@@ -257,7 +257,7 @@ fun HomeScreen(
                     // Pinned above the list: the header samples the content layer, so cards scroll
                     // *under* it and its glass refracts them instead of only the wallpaper.
                     GlassSearchHeader(
-                        title = "ClearPDF",
+                        title = stringResource(R.string.app_name),
                         backdrop = headerBackdrop,
                         uiSensor = uiSensor,
                         query = recentQuery,
@@ -272,7 +272,7 @@ fun HomeScreen(
                     // Search only ever searched recents. With recents off there is nothing behind
                     // the circle, so the header is just the centred title pill.
                     GlassScreenHeaderRow(
-                        title = "ClearPDF",
+                        title = stringResource(R.string.app_name),
                         backdrop = headerBackdrop,
                         onBack = null,
                         titleFontFamily = SourGummyFontFamily,

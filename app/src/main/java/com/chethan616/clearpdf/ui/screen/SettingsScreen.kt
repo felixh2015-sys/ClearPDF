@@ -578,7 +578,7 @@ fun SettingsScreen(
                 // heaviest remaining glass surface (the longest scroll content on the screen).
                 if (p == PageAbout) SettingsSection(backdrop, uiSensor, Modifier, padding = 24.dp, horizontalAlignment = Alignment.CenterHorizontally) {
                     AccentIconTile(Icons.Rounded.Info, LiquidGlassColors.Blue, size = 56, iconSize = 28)
-                    BasicText("ClearPDF", style = TextStyle(ink, 20.sp, FontWeight.Bold))
+                    BasicText(stringResource(R.string.app_name), style = TextStyle(ink, 20.sp, FontWeight.Bold))
                     BasicText(versionLabel, style = TextStyle(sub, 13.sp))
                     BasicText(stringResource(R.string.settings_made_by), style = TextStyle(sub, 13.sp, textAlign = TextAlign.Center))
                     Spacer(Modifier.height(4.dp))

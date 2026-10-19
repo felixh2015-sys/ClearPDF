@@ -13,6 +13,11 @@ import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.PictureAsPdf
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.TextSnippet
+import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Print
+import androidx.compose.material.icons.rounded.SaveAlt
+import androidx.compose.material.icons.rounded.Share
 import com.chethan616.clearpdf.ui.components.GlassDialogField
 import com.chethan616.clearpdf.ui.components.GlassDialogAction
 import com.chethan616.clearpdf.ui.components.GlassDialog
@@ -487,6 +492,55 @@ internal fun ExportShareDialog(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * The viewer's "more" menu: every way a document leaves the reader (share, print, Drive, another
+ * app, a saved copy) in one labelled list, so none of them hides behind the share capsule's
+ * long-press. The header names the file with its page count and size. Each row only reports the
+ * tap; the caller builds the file (edits included) off the UI thread.
+ */
+@Composable
+internal fun DocumentActionsDialog(
+    visible: Boolean,
+    backdrop: LayerBackdrop,
+    fileName: String,
+    details: String,
+    onDismiss: () -> Unit,
+    onShare: () -> Unit,
+    onPrint: (() -> Unit)?,
+    onUploadToDrive: () -> Unit,
+    onOpenWith: () -> Unit,
+    onSaveCopy: () -> Unit,
+    onGoToPage: () -> Unit
+) {
+    val ink = glassDialogInk()
+    val soft = glassDialogInkSoft()
+    GlassDialog(
+        visible = visible,
+        onDismiss = onDismiss,
+        backdrop = backdrop,
+        title = stringResource(R.string.viewer_actions_title),
+        actions = { GlassDialogAction(stringResource(R.string.cancel), onDismiss) }
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.padding(bottom = 4.dp)) {
+                BasicText(
+                    fileName,
+                    style = TextStyle(ink, 15.sp, FontWeight.SemiBold),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (details.isNotBlank()) BasicText(details, style = TextStyle(soft, 13.sp))
+            }
+            DialogRow(Icons.Rounded.Share, LiquidGlassColors.Blue, stringResource(R.string.viewer_action_share), onShare)
+            if (onPrint != null) DialogRow(Icons.Rounded.Print, LiquidGlassColors.Indigo, stringResource(R.string.docx_print), onPrint)
+            DialogRow(Icons.Rounded.CloudUpload, LiquidGlassColors.Green, stringResource(R.string.upload_to_drive), onUploadToDrive)
+            DialogRow(Icons.Rounded.OpenInNew, LiquidGlassColors.Orange, stringResource(R.string.viewer_action_open_with), onOpenWith)
+            DialogRow(Icons.Rounded.SaveAlt, LiquidGlassColors.Teal, stringResource(R.string.viewer_save_copy), onSaveCopy)
+            DialogRow(Icons.Rounded.Description, LiquidGlassColors.Purple, stringResource(R.string.viewer_action_go_to_page), onGoToPage)
         }
     }
 }

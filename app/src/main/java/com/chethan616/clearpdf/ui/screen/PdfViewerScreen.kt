@@ -80,6 +80,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import com.chethan616.clearpdf.ui.theme.LiquidGlassColors
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.PictureAsPdf
 import androidx.compose.material.icons.rounded.Search
@@ -100,6 +101,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -236,6 +238,7 @@ fun PdfViewerScreen(
     var activeImageId       by remember { mutableStateOf<Long?>(null) }
     var showSaveDialog      by rememberSaveable { mutableStateOf(false) }
     var showShareDialog     by remember { mutableStateOf(false) }
+    var showActionsDialog   by remember { mutableStateOf(false) }
     var showFindBar         by rememberSaveable { mutableStateOf(false) }
     var findQuery           by rememberSaveable { mutableStateOf("") }
     val findFocusRequester   = remember { FocusRequester() }
@@ -1656,6 +1659,7 @@ fun PdfViewerScreen(
                     val pillInk = rememberAdaptiveInk(topFg)
                     val findInk = rememberAdaptiveInk(topFg)
                     val moonInk = rememberAdaptiveInk(topFg)
+                    val moreInk = rememberAdaptiveInk(topFg)
                     // No `surfaceColor`, exactly as Home calls it: the circle paints nothing of its own
                     // and is pure refraction. Only the icon's colour adapts to the page.
                     GlassBackButton(
@@ -1711,6 +1715,13 @@ fun PdfViewerScreen(
                             Modifier.size(20.dp),
                             moonInk.color
                         )
+                    }
+                    LiquidIconButton(
+                        onClick = { showActionsDialog = true },
+                        backdrop = contentBackdrop,
+                        modifier = moreInk.modifier
+                    ) {
+                        Icon(Icons.Rounded.MoreVert, stringResource(R.string.viewer_more), Modifier.size(20.dp), moreInk.color)
                     }
                 }
             }
@@ -2500,37 +2511,54 @@ fun PdfViewerScreen(
                 ).show()
             }
         }
+        fun startSaveCopy(format: ShareFormat, encrypt: Boolean, password: String) {
+            // Unedited, a copy keeps the file's own name (no "_Edited").
+            val stem = state.fileName.substringBeforeLast('.').ifBlank { "document" }
+            val (name, mime) = when (format) {
+                ShareFormat.ORIGINAL -> state.fileName.ifBlank { "document.${shareExt.lowercase()}" } to
+                    (state.originalUri?.let { context.contentResolver.getType(it) } ?: "application/octet-stream")
+                ShareFormat.TEXT -> "$stem.txt" to "text/plain"
+                else -> (if (hasUnsavedEdits) "${stem}_Edited.pdf" else "$stem.pdf") to "application/pdf"
+            }
+            pendingSaveCopy = Triple(format, encrypt, password)
+            runCatching {
+                saveCopyLauncher.launch(
+                    Intent(Intent.ACTION_CREATE_DOCUMENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE)
+                        .setType(mime)
+                        .putExtra(Intent.EXTRA_TITLE, name)
+                )
+            }.onFailure { pendingSaveCopy = null }
+        }
+        // Prints, opens elsewhere or uploads the PDF as it is on screen: built by
+        // buildSharePayload, so unsaved edits are part of the printout too (printing used to send
+        // the file as last saved).
+        fun withCurrentPdf(onFailure: Int, use: (android.net.Uri) -> Unit) {
+            viewerScope.launch {
+                val uri = withContext(Dispatchers.IO) { buildSharePayload(ShareFormat.PDF, false, "") }?.first
+                shareMultiple = emptyList()
+                if (uri == null) android.widget.Toast.makeText(context, onFailure, android.widget.Toast.LENGTH_SHORT).show()
+                else use(uri)
+            }
+        }
+        val docTitle = state.fileName.substringBeforeLast('.')
+        val printCurrent: (() -> Unit)? = state.document?.uri?.let {
+            {
+                withCurrentPdf(R.string.docx_print_failed) { uri ->
+                    if (!com.chethan616.clearpdf.utils.PdfPrint.print(context, uri, docTitle))
+                        android.widget.Toast.makeText(context, R.string.docx_print_failed, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
         ExportShareDialog(
             visible     = showShareDialog,
             originalExt = if (shareExt.isNotBlank() && shareExt != "PDF") shareExt else null,
             backdrop    = contentBackdrop,
             onDismiss   = { showShareDialog = false },
-            onPrint     = state.document?.uri?.let { docUri ->
-                {
-                    showShareDialog = false
-                    if (!com.chethan616.clearpdf.utils.PdfPrint.print(context, docUri, state.fileName.substringBeforeLast('.')))
-                        android.widget.Toast.makeText(context, R.string.docx_print_failed, android.widget.Toast.LENGTH_SHORT).show()
-                }
-            },
+            onPrint     = printCurrent?.let { print -> { showShareDialog = false; print() } },
             onSaveCopy  = { format, encrypt, password ->
                 showShareDialog = false
-                // Unedited, a copy keeps the file's own name (no "_Edited").
-                val stem = state.fileName.substringBeforeLast('.').ifBlank { "document" }
-                val (name, mime) = when (format) {
-                    ShareFormat.ORIGINAL -> state.fileName.ifBlank { "document.${shareExt.lowercase()}" } to
-                        (state.originalUri?.let { context.contentResolver.getType(it) } ?: "application/octet-stream")
-                    ShareFormat.TEXT -> "$stem.txt" to "text/plain"
-                    else -> (if (hasUnsavedEdits) "${stem}_Edited.pdf" else "$stem.pdf") to "application/pdf"
-                }
-                pendingSaveCopy = Triple(format, encrypt, password)
-                runCatching {
-                    saveCopyLauncher.launch(
-                        Intent(Intent.ACTION_CREATE_DOCUMENT)
-                            .addCategory(Intent.CATEGORY_OPENABLE)
-                            .setType(mime)
-                            .putExtra(Intent.EXTRA_TITLE, name)
-                    )
-                }.onFailure { pendingSaveCopy = null }
+                startSaveCopy(format, encrypt, password)
             },
             onShare     = { format, encrypt, password ->
                 showShareDialog = false
@@ -2560,6 +2588,50 @@ fun PdfViewerScreen(
                     }
                 }
             }
+        )
+
+        // ── "More" menu: every way out of the reader, labelled ──
+        val docSize by produceState<Long?>(null, state.document?.uri) {
+            val uri = state.document?.uri ?: return@produceState
+            value = withContext(Dispatchers.IO) {
+                runCatching {
+                    if (uri.scheme == "file") java.io.File(uri.path!!).length()
+                    else context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+                }.getOrNull()?.takeIf { it > 0 }
+            }
+        }
+        DocumentActionsDialog(
+            visible  = showActionsDialog,
+            backdrop = contentBackdrop,
+            fileName = state.fileName.ifBlank { stringResource(R.string.viewer_actions_title) },
+            details  = listOfNotNull(
+                stringResource(R.string.viewer_info_pages, safePageCount),
+                docSize?.let { android.text.format.Formatter.formatShortFileSize(context, it) }
+            ).joinToString(" · "),
+            onDismiss       = { showActionsDialog = false },
+            onShare         = { showActionsDialog = false; showShareDialog = true },
+            onPrint         = printCurrent?.let { print -> { showActionsDialog = false; print() } },
+            onUploadToDrive = {
+                showActionsDialog = false
+                withCurrentPdf(R.string.no_app_to_share) { uri ->
+                    com.chethan616.clearpdf.util.ShareToCloud.uploadToDrive(context, uri, "application/pdf", state.fileName)
+                }
+            },
+            onOpenWith      = {
+                showActionsDialog = false
+                withCurrentPdf(R.string.no_app_to_open) { uri ->
+                    val view = Intent(Intent.ACTION_VIEW)
+                        .setDataAndType(uri, "application/pdf")
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    runCatching {
+                        context.startActivity(Intent.createChooser(view, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }.onFailure {
+                        android.widget.Toast.makeText(context, R.string.no_app_to_open, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            onSaveCopy      = { showActionsDialog = false; startSaveCopy(ShareFormat.PDF, false, "") },
+            onGoToPage      = { showActionsDialog = false; showPageJumpDialog = true }
         )
 
         // ── Opening curtain ────────────────────────────────────────────────

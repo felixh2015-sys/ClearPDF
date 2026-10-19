@@ -186,7 +186,7 @@ object ImageIo {
             val tags = if (mode == MetadataMode.Keep) CopyTags + GpsTags else CopyTags
             tags.forEach { tag -> src.getAttribute(tag)?.let { dst.setAttribute(tag, it) } }
             dst.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
-            dst.setAttribute(ExifInterface.TAG_SOFTWARE, "ClearPDF")
+            dst.setAttribute(ExifInterface.TAG_SOFTWARE, "PaperPDF")
             dst.saveAttributes()
         }
     }
@@ -210,7 +210,7 @@ object ImageIo {
             put(MediaStore.Images.Media.DISPLAY_NAME, file.name)
             put(MediaStore.Images.Media.MIME_TYPE, format.mime)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/ClearPDF")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/PaperPDF")
             }
         }
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)

@@ -1,4 +1,4 @@
-# Tinta PDF
+# PaperPDF
 
 Versión personalizada de [ClearPDF](https://github.com/Chethan616/ClearPDF) (licencia MIT).
 Todo funciona dentro del teléfono: ningún documento se sube a ningún servidor, salvo que tú
@@ -24,6 +24,9 @@ lo compartas.
 - **Marca propia**: nombre, ícono y colores (tinta verde azulado y ámbar), y una interfaz más
   tranquila por defecto (fondo plano y reflejos del efecto cristal sin movimiento). Las dos
   opciones se pueden cambiar en Ajustes.
+- **Menú ⋮ en el visor**: compartir o exportar, imprimir, subir a Google Drive, abrir con otra
+  app, guardar una copia e ir a una página, con el nombre, las páginas y el tamaño del archivo.
+  Imprimir incluye las anotaciones que aún no se han guardado.
 - Se instala **junto a** ClearPDF (`com.tintapdf.app`), sin reemplazarlo.
 
 ## Cómo conseguir el APK

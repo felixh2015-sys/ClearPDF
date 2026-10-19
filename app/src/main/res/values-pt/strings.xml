@@ -8,7 +8,7 @@
     <string name="viewer_bookmark_add">Adicionar marcador nesta página</string>
     <string name="viewer_bookmark_remove">Remover marcador</string>
     <string name="viewer_bookmark_page">Página %1$d</string>
-    <string name="app_name">Tinta PDF</string>
+    <string name="app_name">PaperPDF</string>
 
     <!-- App Shortcuts -->
     <string name="shortcut_open_short">Abrir PDF</string>
